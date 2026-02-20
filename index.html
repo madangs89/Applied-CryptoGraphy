@@ -30,10 +30,6 @@
             z-index: 100
         }
 
-        .light .overlay {
-            background: white
-        }
-
         canvas {
             display: none
         }
@@ -58,17 +54,18 @@
 
     <div class="pt-24"></div>
 
+    <!-- HOME -->
     <section data-page="home" class="page active max-w-6xl mx-auto px-6 space-y-20 pb-32">
         <h1 class="text-6xl md:text-8xl font-bold leading-tight">
             Encrypted. Embedded. Invisible.
         </h1>
         <p class="text-xl text-neutral-400 max-w-3xl">
-            Obscura combines AES-256 encryption and dual-mode image steganography.
-            Choose stealth mode for invisible hiding or visible mode for encrypted image scrambling.
+            AES-256 encryption + dual-mode image steganography.
             Everything runs securely in your browser.
         </p>
     </section>
 
+    <!-- ENCRYPT -->
     <section data-page="encrypt" class="page max-w-5xl mx-auto px-6 space-y-12 pb-32">
         <h1 class="text-5xl font-bold">Encrypt & Hide</h1>
 
@@ -80,7 +77,9 @@
 
         <select id="modeSelect" class="w-full p-4 bg-neutral-900 border border-neutral-800 rounded-xl">
             <option value="stealth">Visible Encryption Mode</option>
-            <option value="visible">Stealth Mode (Invisible) </option>
+            <option value="visible">
+                Stealth Mode (Invisible)
+            </option>
         </select>
 
         <input type="file" id="imageInput" accept="image/png"
@@ -92,10 +91,13 @@
 
         <div id="previewContainer" class="hidden space-y-4">
             <img id="previewImage" class="rounded-xl border border-neutral-700" />
-            <a id="downloadLink" class="underline text-green-400">Download Encrypted Image</a>
+            <a id="downloadLink" class="underline text-green-400">
+                Download Encrypted Image
+            </a>
         </div>
     </section>
 
+    <!-- DECRYPT -->
     <section data-page="decrypt" class="page max-w-5xl mx-auto px-6 space-y-12 pb-32">
         <h1 class="text-5xl font-bold">Extract & Decrypt</h1>
 
@@ -115,7 +117,7 @@
     <canvas id="canvas"></canvas>
 
     <script>
-        // Navigation
+        /* ================= NAVIGATION ================= */
         const pages = document.querySelectorAll(".page");
         const overlay = document.querySelector(".overlay");
 
@@ -123,22 +125,29 @@
             const hash = location.hash.replace("#", "") || "home";
             const target = document.querySelector(`[data-page="${hash}"]`);
             if (!target) return;
+
             gsap.to(overlay, {
-                y: "0%", duration: 0.6, onComplete: () => {
+                y: "0%", duration: 0.6,
+                onComplete: () => {
                     pages.forEach(p => p.classList.remove("active"));
                     target.classList.add("active");
-                    gsap.from(target.children, { opacity: 0, y: 40, stagger: 0.1, duration: 0.8 });
+                    gsap.from(target.children, {
+                        opacity: 0, y: 40, stagger: 0.1, duration: 0.8
+                    });
                     gsap.to(overlay, { y: "100%", duration: 0.6 });
                 }
             });
         }
         window.addEventListener("hashchange", navigate);
         document.querySelectorAll("[data-link]").forEach(l => {
-            l.onclick = e => { e.preventDefault(); location.hash = l.getAttribute("href"); };
+            l.onclick = e => {
+                e.preventDefault();
+                location.hash = l.getAttribute("href");
+            };
         });
         navigate();
 
-        // Theme
+        /* ================= THEME ================= */
         document.getElementById("themeToggle").onclick = () => {
             document.body.classList.toggle("bg-white");
             document.body.classList.toggle("text-black");
@@ -146,36 +155,57 @@
             document.body.classList.toggle("text-neutral-100");
         };
 
-        // Crypto
+        /* ================= CRYPTO ================= */
         async function getKey(password) {
             const enc = new TextEncoder();
             const keyMaterial = await crypto.subtle.importKey(
-                "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]);
+                "raw", enc.encode(password),
+                { name: "PBKDF2" }, false, ["deriveKey"]
+            );
             return crypto.subtle.deriveKey(
-                { name: "PBKDF2", salt: enc.encode("obscura"), iterations: 100000, hash: "SHA-256" },
-                keyMaterial, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+                {
+                    name: "PBKDF2",
+                    salt: enc.encode("obscura"),
+                    iterations: 100000,
+                    hash: "SHA-256"
+                },
+                keyMaterial,
+                { name: "AES-GCM", length: 256 },
+                false,
+                ["encrypt", "decrypt"]
+            );
         }
 
         async function getImageXORKey(password) {
-            const enc = new TextEncoder();
-            const hash = await crypto.subtle.digest("SHA-256", enc.encode(password));
+            const hash = await crypto.subtle.digest(
+                "SHA-256",
+                new TextEncoder().encode(password)
+            );
             return new Uint8Array(hash);
         }
 
-        // Encrypt
+        /* ================= ENCRYPT ================= */
         async function encryptAndHide() {
+
             const msg = document.getElementById("message").value;
             const password = document.getElementById("password").value;
             const file = document.getElementById("imageInput").files[0];
             const mode = document.getElementById("modeSelect").value;
 
-            if (!msg || !password || !file) return alert("Fill all fields");
-            if (file.type !== "image/png") return alert("Use PNG image only");
+            if (!msg || !password || !file)
+                return alert("Fill all fields");
+
+            if (file.type !== "image/png")
+                return alert("Use PNG only");
 
             const key = await getKey(password);
             const iv = crypto.getRandomValues(new Uint8Array(12));
-            const enc = new TextEncoder();
-            const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, enc.encode(msg));
+
+            const encrypted = await crypto.subtle.encrypt(
+                { name: "AES-GCM", iv },
+                key,
+                new TextEncoder().encode(msg)
+            );
 
             const payload = new Uint8Array([...iv, ...new Uint8Array(encrypted)]);
             const lengthBytes = new Uint8Array(4);
@@ -192,26 +222,28 @@
                 const canvas = document.getElementById("canvas");
                 canvas.width = img.width;
                 canvas.height = img.height;
+
                 const ctx = canvas.getContext("2d");
                 ctx.drawImage(img, 0, 0);
 
                 let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 let data = imageData.data;
 
-                if (mode === "visible") {
-                    const xorKey = await getImageXORKey(password);
-                    for (let i = 0; i < data.length; i++) {
-                        if ((i + 1) % 4 !== 0) {
-                            data[i] = data[i] ^ xorKey[i % xorKey.length];
-                        }
-                    }
-                }
-
-                // Now ALWAYS embed after scramble decision
+                // EMBED FIRST
                 let bitIndex = 0;
                 for (let i = 0; i < data.length && bitIndex < binary.length; i++) {
                     if ((i + 1) % 4 !== 0) {
                         data[i] = (data[i] & 254) | binary[bitIndex++];
+                    }
+                }
+
+                // THEN SCRAMBLE
+                if (mode === "visible") {
+                    const xorKey = await getImageXORKey(password);
+                    for (let i = 0; i < data.length; i++) {
+                        if ((i + 1) % 4 !== 0) {
+                            data[i] ^= xorKey[i % xorKey.length];
+                        }
                     }
                 }
 
@@ -224,27 +256,53 @@
                 document.getElementById("previewContainer").classList.remove("hidden");
             };
         }
-        // Decrypt
+
+        /* ================= DECRYPT ================= */
         async function extractAndDecrypt() {
+
             const file = document.getElementById("stegoInput").files[0];
             const password = document.getElementById("decryptPassword").value;
-            if (!file || !password) return alert("Fill all fields");
-            if (file.type !== "image/png") return alert("Use PNG image only");
+
+            if (!file || !password)
+                return alert("Fill all fields");
+
+            if (file.type !== "image/png")
+                return alert("Use PNG only");
 
             const img = new Image();
             img.src = URL.createObjectURL(file);
 
             img.onload = async () => {
+
                 const canvas = document.getElementById("canvas");
                 canvas.width = img.width;
                 canvas.height = img.height;
+
                 const ctx = canvas.getContext("2d");
                 ctx.drawImage(img, 0, 0);
 
                 let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 let data = imageData.data;
 
-                // First extract bits normally
+                // ALWAYS reverse scramble first
+                const xorKey = await getImageXORKey(password);
+
+                for (let i = 0; i < data.length; i++) {
+                    if ((i + 1) % 4 !== 0) {
+                        data[i] ^= xorKey[i % xorKey.length];
+                    }
+                }
+
+                // PUT BACK RESTORED IMAGE
+                ctx.putImageData(imageData, 0, 0);
+
+                // OPTIONAL: show restored image preview
+                const restoredURL = canvas.toDataURL("image/png");
+
+                // If you want preview on decrypt page, add this:
+                // document.getElementById("previewImage").src = restoredURL;
+
+                // Now extract message
                 let bits = "";
                 for (let i = 0; i < data.length; i++) {
                     if ((i + 1) % 4 !== 0) {
@@ -254,30 +312,15 @@
 
                 let length = parseInt(bits.slice(0, 32), 2);
 
-                // If invalid length, maybe visible mode → try reversing XOR
                 if (!length || isNaN(length)) {
-                    const xorKey = await getImageXORKey(password);
-                    for (let i = 0; i < data.length; i++) {
-                        if ((i + 1) % 4 !== 0) {
-                            data[i] = data[i] ^ xorKey[i % xorKey.length];
-                        }
-                    }
-                    ctx.putImageData(imageData, 0, 0);
-                    data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-
-                    bits = "";
-                    for (let i = 0; i < data.length; i++) {
-                        if ((i + 1) % 4 !== 0) {
-                            bits += data[i] & 1;
-                        }
-                    }
-                    length = parseInt(bits.slice(0, 32), 2);
-                    if (!length || isNaN(length))
-                        return document.getElementById("output").innerText = "Invalid image or key";
+                    document.getElementById("output").innerText =
+                        "Invalid image or wrong key.";
+                    return;
                 }
 
                 let payloadBits = bits.slice(32, 32 + length * 8);
                 let bytes = [];
+
                 for (let i = 0; i < payloadBits.length; i += 8) {
                     bytes.push(parseInt(payloadBits.slice(i, i + 8), 2));
                 }
@@ -288,10 +331,18 @@
 
                 try {
                     const key = await getKey(password);
-                    const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, encrypted);
-                    document.getElementById("output").innerText = new TextDecoder().decode(decrypted);
+                    const decrypted = await crypto.subtle.decrypt(
+                        { name: "AES-GCM", iv },
+                        key,
+                        encrypted
+                    );
+
+                    document.getElementById("output").innerText =
+                        new TextDecoder().decode(decrypted);
+
                 } catch {
-                    document.getElementById("output").innerText = "Invalid key or corrupted image.";
+                    document.getElementById("output").innerText =
+                        "Invalid key or corrupted image.";
                 }
             };
         }
